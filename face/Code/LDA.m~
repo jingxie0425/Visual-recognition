@@ -1,0 +1,67 @@
+function [testDataProj,trainDataProj] = LDA(trainData,testData,classNum)
+%
+% This function implement the Linear Discriminant Analysis.
+%
+% [testDataProj,trainDataProj] = LDA(trainData,testData,N_C)
+%
+% trainData - The training data (Must be reshaped to a vector)
+% testData - The testing data (Must be reshaped to a vector)
+% classNum - Number of classes in the dataset.
+% testDataProj - The projected training data (each column is an observation)
+% trainDataProj - The projected testing data (each column is an observation)
+%
+% Jing Xie
+% 16/11/2020
+%
+    %Get the size of the data and initialize the parameters
+    [pixelNum,trainNum] = size(trainData);
+    [~,testNum] = size(testData);
+    samNumPerCl = trainNum/classNum; %# of samples per class
+    
+    %Calculate the mean value
+    mu = zeros(pixelNum,classNum); % mean value of each class
+    mu_all = zeros(pixelNum,1); %overall mean value
+    for j = 1:classNum % mean value of each class
+        for i = 1+N_D_C*(j-1):N_D_C*j
+            mu(:,j) = mu(:,j) + trainData(:,i); 
+        end
+        mu(:,j) = mu(:,j)/N_D_C;
+    end
+    for i = 1:trainNum %overall mean value
+        mu_all = mu_all + trainData(:,i);
+    end
+    mu_all = mu_all/trainNum;
+    
+    %Calculate between-scatter matrix
+    sigma_b = zeros(pixelNum,pixelNum);
+    for j = 1:classNum
+        tmp = mu(:,j) - mu_all;
+        sigma_b = sigma_b + (tmp * tmp.');
+    end
+    
+    %Calculate within-scatter matrix
+    sigma_m = zeros(pixelNum,pixelNum);
+    sigma_w = zeros(pixelNum,pixelNum);
+    for j = 1:classNum
+        start = 1+N_D_C*(j-1);
+        for k = 1:N_D_C
+            diff = trainData(:,start+k-1) - mu(:,j);
+            sigma_m = sigma_m + diff*diff.';
+        end
+        sigma_m = sigma_m + 1 * eye(pixelNum);%matrix singularity
+        sigma_w = sigma_w + sigma_m;
+    end
+    
+    %Take the first N_C-1 eigenvectors
+    [eigvec,~] = eigs(sigma_b,sigma_w,classNum-1);
+
+    %Project the training and testing data respectively
+    trainDataProj = zeros(classNum-1,trainNum);
+    testDataProj = zeros(classNum-1,testNum);
+    for i = 1:trainNum
+        trainDataProj(:,i) = eigvec.' * trainData(:,i);
+    end
+    for i = 1:testNum
+        testDataProj(:,i) = eigvec.' * testData(:,i); 
+    end
+end
